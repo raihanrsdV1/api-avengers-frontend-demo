@@ -35,9 +35,12 @@ app.get('/api/info', (req, res) => {
   });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Demo app running on port ${PORT}`);
-  console.log(`🏥 Health check: http://localhost:${PORT}/health`);
-});
+// Only start server if not in test mode
+if (require.main === module) {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`✅ Demo app running on port ${PORT}`);
+    console.log(`🏥 Health check: http://localhost:${PORT}/health`);
+  });
+}
 
 module.exports = app;
