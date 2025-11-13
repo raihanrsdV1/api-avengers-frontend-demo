@@ -1,0 +1,91 @@
+pipeline {
+    agent any
+    
+    environment {
+        APP_NAME = 'ci-cd-demo-app'
+        APP_VERSION = '1.0.0'
+        DOCKER_IMAGE = "${APP_NAME}:${APP_VERSION}"
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo '📥 Checking out code...'
+                checkout scm
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                echo '🔨 Building application...'
+                dir('app') {
+                    sh 'npm install'
+                    echo '✅ Dependencies installed'
+                }
+            }
+        }
+        
+        stage('Test') {
+            steps {
+                echo '🧪 Running unit tests...'
+                dir('app') {
+                    sh 'npm test'
+                    echo '✅ Tests passed'
+                }
+            }
+        }
+        
+        stage('Package') {
+            steps {
+                echo '📦 Building Docker image...'
+                script {
+                    sh """
+                        docker build -t ${DOCKER_IMAGE} ./app
+                        docker tag ${DOCKER_IMAGE} ${APP_NAME}:latest
+                    """
+                    echo "✅ Docker image built: ${DOCKER_IMAGE}"
+                }
+            }
+        }
+        
+        stage('Deploy') {
+            steps {
+                echo '🚀 Deploying application...'
+                script {
+                    sh '''
+                        docker-compose down || true
+                        docker-compose up -d
+                    '''
+                    echo '✅ Application deployed'
+                }
+            }
+        }
+        
+        stage('Health Check') {
+            steps {
+                echo '🏥 Verifying application health...'
+                script {
+                    sh 'chmod +x healthcheck.sh'
+                    sh './healthcheck.sh'
+                    echo '✅ Health check passed!'
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo '✅ Pipeline completed successfully!'
+            echo "Application is running at: http://localhost:3000"
+            echo "Health endpoint: http://localhost:3000/health"
+        }
+        failure {
+            echo '❌ Pipeline failed!'
+            sh 'docker-compose logs || true'
+        }
+        always {
+            echo '🧹 Cleaning up...'
+            sh 'docker system prune -f || true'
+        }
+    }
+}
